@@ -1,0 +1,175 @@
+:root {
+  /* Paleta Azul e Preto Moderna */
+  --text: #94a3b8;            /* Texto secundário limpo */
+  --text-h: #f8fafc;          /* Texto principal bem claro */
+  --bg: #090d16;              /* Preto azulado profundo para o fundo geral */
+  --border: #1e293b;          /* Bordas discretas */
+  --card-bg: #0f172a;         /* Azul escuro fechado para os cards */
+  --input-bg: #070a12;        /* Preto para campos de texto */
+  
+  /* Gradientes e Destaques */
+  --accent: #2563eb;
+  --accent-hover: #3b82f6;
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --accent-glow: rgba(37, 99, 235, 0.35);
+  
+  --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  font: 20px/150% var(--sans);
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(29, 78, 216, 0.08) 0px, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Container Principal */
+.app-container {
+  padding: 48px 64px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.app-title {
+  font-size: 52px;
+  font-weight: 800;
+  color: var(--text-h);
+  margin-bottom: 36px;
+  letter-spacing: -1.5px;
+  background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Cards com Efeito de Vidro e Elevação */
+.card-box {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+  margin-bottom: 40px;
+  box-shadow: var(--shadow);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-box:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.7), 0 0 20px var(--accent-glow);
+}
+
+.card-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin-bottom: 24px;
+  letter-spacing: -0.5px;
+}
+
+/* Campos do Formulário */
+.custom-input {
+  width: 100%;
+  padding: 16px 20px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-h);
+  box-sizing: border-box;
+  font-size: 18px;
+  transition: all 0.2s ease;
+}
+
+.custom-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+  background: #0b1120;
+}
+
+/* Botões Modernos com Gradiente */
+.btn-accent {
+  background: var(--accent-gradient);
+  color: #ffffff;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px var(--accent-glow);
+  transition: all 0.2s ease;
+}
+
+.btn-accent:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+  filter: brightness(1.1);
+}
+
+.btn-accent:active {
+  transform: translateY(0);
+}
+
+/* Tabela Estilizada */
+.custom-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 20px;
+  font-size: 19px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.custom-table th {
+  text-align: left;
+  padding: 20px;
+  background-color: #162032;
+  color: var(--text-h);
+  font-size: 20px;
+  font-weight: 700;
+  border-bottom: 2px solid var(--border);
+}
+
+.custom-table td {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--card-bg);
+  transition: background-color 0.2s ease;
+}
+
+.custom-table tr:last-child td {
+  border-bottom: none;
+}
+
+.custom-table tr:hover td {
+  background-color: #1e293b;
+}
