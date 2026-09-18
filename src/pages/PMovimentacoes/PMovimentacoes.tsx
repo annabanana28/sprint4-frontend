@@ -11,6 +11,7 @@ export function PMovimentacoes() {
   const [mensagem, setMensagem] = useState('');
   const [tipoMensagem, setTipoMensagem] = useState<'sucesso' | 'erro' | ''>('');
 
+  const [editandoId, setEditandoId] = useState<number | null>(null);
   const [codigoProduto, setCodigoProduto] = useState('');
   const [tipo, setTipo] = useState<'ENTRADA' | 'RETIRADA'>('ENTRADA');
   const [quantidade, setQuantidade] = useState('');
@@ -46,10 +47,30 @@ export function PMovimentacoes() {
     }, 4000);
   };
 
+  const iniciarEdicao = (m: MovimentacaoDTO) => {
+    if (!m.codigo_movimentacao) return;
+    setEditandoId(m.codigo_movimentacao);
+    setCodigoProduto(m.produto);
+    setTipo(m.tipo);
+    setQuantidade(String(m.quantidade));
+    setObservacao(m.observacao || '');
+    setMotivoRetirada(m.motivo_retirada || '');
+    setPrecoUnitario(m.preco_unitario ? String(m.preco_unitario) : '');
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+    setCodigoProduto('');
+    setTipo('ENTRADA');
+    setQuantidade('');
+    setObservacao('');
+    setMotivoRetirada('');
+    setPrecoUnitario('');
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Validação Frontend
     if (!codigoProduto) {
       exibirMensagem('Selecione um produto!', 'erro');
       return;
@@ -57,7 +78,7 @@ export function PMovimentacoes() {
 
     const qtd = parseInt(quantidade);
     if (isNaN(qtd) || qtd <= 0) {
-      exibirMensagem('A quantidade deve ser um número maior que zero!', 'erro');
+      exibirMensagem('A quantidade deve ser maior que zero!', 'erro');
       return;
     }
 
@@ -72,7 +93,7 @@ export function PMovimentacoes() {
       return;
     }
 
-    const novaMovimentacao: MovimentacaoDTO = {
+    const payload: MovimentacaoDTO = {
       produto: codigoProduto,
       tipo,
       quantidade: qtd,
@@ -81,19 +102,19 @@ export function PMovimentacoes() {
       preco_unitario: preco,
     };
 
-    const sucesso = await MovimentacaoRequests.cadastrar(novaMovimentacao);
+    let sucesso = false;
+    if (editandoId !== null) {
+      sucesso = await MovimentacaoRequests.atualizar(editandoId, payload);
+    } else {
+      sucesso = await MovimentacaoRequests.cadastrar(payload);
+    }
 
     if (sucesso) {
-      exibirMensagem('Movimentação registrada com sucesso!', 'sucesso');
-      setCodigoProduto('');
-      setTipo('ENTRADA');
-      setQuantidade('');
-      setObservacao('');
-      setMotivoRetirada('');
-      setPrecoUnitario('');
+      exibirMensagem(editandoId ? 'Movimentação atualizada com sucesso!' : 'Movimentação registrada com sucesso!', 'sucesso');
+      cancelarEdicao();
       carregarDados();
     } else {
-      exibirMensagem('Falha ao registrar movimentação.', 'erro');
+      exibirMensagem('Falha ao salvar movimentação.', 'erro');
     }
   };
 
@@ -114,7 +135,7 @@ export function PMovimentacoes() {
       )}
 
       <section className="card-box">
-        <h2 className="card-title">Registrar Movimentação</h2>
+        <h2 className="card-title">{editandoId ? `Editar Movimentação #${editandoId}` : 'Registrar Movimentação'}</h2>
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px' }}>
           <select
             className="custom-input"
@@ -179,9 +200,16 @@ export function PMovimentacoes() {
             onChange={(e) => setObservacao(e.target.value)}
           />
 
-          <button type="submit" className="btn-accent">
-            Registrar Movimentação
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="submit" className="btn-accent">
+              {editandoId ? 'Salvar Alterações' : 'Registrar Movimentação'}
+            </button>
+            {editandoId !== null && (
+              <button type="button" className="btn-accent" style={{ background: '#64748b' }} onClick={cancelarEdicao}>
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       </section>
 
@@ -196,7 +224,7 @@ export function PMovimentacoes() {
               <th>Qtd</th>
               <th>Motivo</th>
               <th>Total</th>
-              <th>Data</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -210,7 +238,11 @@ export function PMovimentacoes() {
                 <td>{m.quantidade}</td>
                 <td>{m.motivo_retirada || '-'}</td>
                 <td>{m.valor_total ? `R$ ${Number(m.valor_total).toFixed(2)}` : '-'}</td>
-                <td>{m.data ? new Date(m.data).toLocaleDateString('pt-BR') : '-'}</td>
+                <td>
+                  <button className="btn-accent" style={{ padding: '6px 16px', fontSize: '14px' }} onClick={() => iniciarEdicao(m)}>
+                    Editar
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

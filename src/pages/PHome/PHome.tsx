@@ -1,40 +1,40 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import type { ProdutoDTO } from '../../dto/ProdutoDTO';
+import type { CategoriaDTO } from '../../dto/CategoriaDTO';
 import { ProdutoRequests } from '../../fetch/ProdutoRequests';
+import { CategoriaRequests } from '../../fetch/CategoriaRequests';
 
 export function PHome() {
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
-  const [mensagem, setMensagem] = useState<string>('');
+  const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
+  const [mensagem, setMensagem] = useState('');
   const [tipoMensagem, setTipoMensagem] = useState<'sucesso' | 'erro' | ''>('');
 
+  const [editandoCodigo, setEditandoCodigo] = useState<string | null>(null);
   const [codigoProduto, setCodigoProduto] = useState('');
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [categoria, setCategoria] = useState('');
   const [precoUnitario, setPrecoUnitario] = useState('');
-  const [qtdDisponivel, setQtdDisponivel] = useState('');
-  const [qtdMinima, setQtdMinima] = useState('');
+  const [quantidadeDisponivel, setQuantidadeDisponivel] = useState('');
+  const [quantidadeMinima, setQuantidadeMinima] = useState('');
+  const [status, setStatus] = useState<'ATIVO' | 'DESATIVADO'>('ATIVO');
 
   useEffect(() => {
-    carregarProdutos();
+    carregarDados();
   }, []);
 
-  const carregarProdutos = async () => {
+  const carregarDados = async () => {
     try {
-      const dados = await ProdutoRequests.listarTodos();
-      setProdutos(dados);
+      const [prods, cats] = await Promise.all([
+        ProdutoRequests.listarTodos(),
+        CategoriaRequests.listarTodas(),
+      ]);
+      setProdutos(prods);
+      setCategorias(cats);
     } catch {
-      exibirMensagem('Erro ao carregar a lista de produtos.', 'erro');
-    }
-  };
-
-  const carregarReposicao = async () => {
-    try {
-      const dados = await ProdutoRequests.listarReposicao();
-      setProdutos(dados);
-    } catch {
-      exibirMensagem('Erro ao carregar lista de reposição.', 'erro');
+      exibirMensagem('Erro ao carregar dados dos produtos.', 'erro');
     }
   };
 
@@ -47,53 +47,76 @@ export function PHome() {
     }, 4000);
   };
 
+const iniciarEdicao = (p: ProdutoDTO) => {
+  setEditandoCodigo(p.codigo_produto);
+  setCodigoProduto(p.codigo_produto);
+  setNome(p.nome);
+  setDescricao(p.descricao || '');
+  setCategoria(p.categoria);
+  setPrecoUnitario(String(p.preco_unitario));
+  setQuantidadeDisponivel(String(p.quantidade_disponivel));
+  setQuantidadeMinima(String(p.quantidade_minima));
+  setStatus((p.status as 'ATIVO' | 'DESATIVADO') || 'ATIVO');
+};
+
+  const cancelarEdicao = () => {
+    setEditandoCodigo(null);
+    setCodigoProduto('');
+    setNome('');
+    setDescricao('');
+    setCategoria('');
+    setPrecoUnitario('');
+    setQuantidadeDisponivel('');
+    setQuantidadeMinima('');
+    setStatus('ATIVO');
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!codigoProduto.trim() || !nome.trim() || !categoria.trim()) {
-      exibirMensagem('Preencha todos os campos obrigatórios!', 'erro');
+    if (!codigoProduto.trim() || !nome.trim() || !categoria) {
+      exibirMensagem('Preencha os campos obrigatórios (Código, Nome e Categoria)!', 'erro');
       return;
     }
 
     const preco = parseFloat(precoUnitario);
-    const disponivel = parseInt(qtdDisponivel);
-    const minima = parseInt(qtdMinima);
+    const qtdDisp = parseInt(quantidadeDisponivel);
+    const qtdMin = parseInt(quantidadeMinima);
 
-    if (isNaN(preco) || preco <= 0) {
-      exibirMensagem('O preço unitário deve ser maior que zero!', 'erro');
+    if (isNaN(preco) || preco < 0) {
+      exibirMensagem('Preço unitário deve ser um número maior ou igual a zero!', 'erro');
       return;
     }
 
-    if (isNaN(disponivel) || disponivel < 0 || isNaN(minima) || minima < 0) {
-      exibirMensagem('As quantidades não podem ser negativas!', 'erro');
+    if (isNaN(qtdDisp) || qtdDisp < 0 || isNaN(qtdMin) || qtdMin < 0) {
+      exibirMensagem('As quantidades não podem ser valores negativos!', 'erro');
       return;
     }
 
-    const novoProduto: ProdutoDTO = {
-      codigo_produto: codigoProduto,
-      nome,
-      descricao,
+    const payload: ProdutoDTO = {
+      codigo_produto: codigoProduto.trim(),
+      nome: nome.trim(),
+      descricao: descricao.trim() || undefined,
       categoria,
       preco_unitario: preco,
-      quantidade_disponivel: disponivel,
-      quantidade_minima: minima,
-      status: 'ATIVO'
+      quantidade_disponivel: qtdDisp,
+      quantidade_minima: qtdMin,
+      status,
     };
 
-    const sucesso = await ProdutoRequests.cadastrar(novoProduto);
+    let sucesso = false;
+    if (editandoCodigo) {
+      sucesso = await ProdutoRequests.atualizar(editandoCodigo, payload);
+    } else {
+      sucesso = await ProdutoRequests.cadastrar(payload);
+    }
 
     if (sucesso) {
-      exibirMensagem('Produto cadastrado com sucesso!', 'sucesso');
-      setCodigoProduto('');
-      setNome('');
-      setDescricao('');
-      setCategoria('');
-      setPrecoUnitario('');
-      setQtdDisponivel('');
-      setQtdMinima('');
-      carregarProdutos();
+      exibirMensagem(editandoCodigo ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!', 'sucesso');
+      cancelarEdicao();
+      carregarDados();
     } else {
-      exibirMensagem('Falha ao cadastrar produto. Verifique os dados informados!', 'erro');
+      exibirMensagem('Falha ao salvar produto.', 'erro');
     }
   };
 
@@ -107,38 +130,108 @@ export function PHome() {
           marginBottom: '20px',
           borderRadius: '6px',
           color: '#fff',
-          backgroundColor: tipoMensagem === 'sucesso' ? '#22c55e' : '#991b1b'
+          backgroundColor: tipoMensagem === 'sucesso' ? '#22c55e' : '#991b1b',
         }}>
           {mensagem}
         </div>
       )}
 
       <section className="card-box">
-        <h2 className="card-title">Cadastrar Produto</h2>
+        <h2 className="card-title">{editandoCodigo ? `Editar Produto: ${editandoCodigo}` : 'Cadastrar Produto'}</h2>
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px' }}>
-          <input className="custom-input" type="text" placeholder="Código do Produto *" value={codigoProduto} onChange={e => setCodigoProduto(e.target.value)} required />
-          <input className="custom-input" type="text" placeholder="Nome *" value={nome} onChange={e => setNome(e.target.value)} required />
-          <input className="custom-input" type="text" placeholder="Descrição" value={descricao} onChange={e => setDescricao(e.target.value)} />
-          <input className="custom-input" type="text" placeholder="Categoria *" value={categoria} onChange={e => setCategoria(e.target.value)} required />
-          <input className="custom-input" type="number" step="0.01" placeholder="Preço (R$) *" value={precoUnitario} onChange={e => setPrecoUnitario(e.target.value)} required />
-          <input className="custom-input" type="number" placeholder="Qtd. Disponível *" value={qtdDisponivel} onChange={e => setQtdDisponivel(e.target.value)} required />
-          <input className="custom-input" type="number" placeholder="Qtd. Mínima *" value={qtdMinima} onChange={e => setQtdMinima(e.target.value)} required />
-          
-          <button type="submit" className="btn-accent">
-            Cadastrar Produto
-          </button>
+          <input
+            className="custom-input"
+            type="text"
+            placeholder="Código do Produto *"
+            value={codigoProduto}
+            onChange={(e) => setCodigoProduto(e.target.value)}
+            disabled={!!editandoCodigo}
+            required
+          />
+
+          <input
+            className="custom-input"
+            type="text"
+            placeholder="Nome *"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            required
+          />
+
+          <input
+            className="custom-input"
+            type="text"
+            placeholder="Descrição"
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+          />
+
+          <select
+            className="custom-input"
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+            required
+          >
+            <option value="">Selecione a Categoria *</option>
+            {categorias.map((c) => (
+              <option key={c.nome_categoria} value={c.nome_categoria}>
+                {c.nome_categoria}
+              </option>
+            ))}
+          </select>
+
+          <input
+            className="custom-input"
+            type="number"
+            step="0.01"
+            placeholder="Preço (R$) *"
+            value={precoUnitario}
+            onChange={(e) => setPrecoUnitario(e.target.value)}
+            required
+          />
+
+          <input
+            className="custom-input"
+            type="number"
+            placeholder="Qtd. Disponível *"
+            value={quantidadeDisponivel}
+            onChange={(e) => setQuantidadeDisponivel(e.target.value)}
+            required
+          />
+
+          <input
+            className="custom-input"
+            type="number"
+            placeholder="Qtd. Mínima *"
+            value={quantidadeMinima}
+            onChange={(e) => setQuantidadeMinima(e.target.value)}
+            required
+          />
+
+          <select
+            className="custom-input"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as 'ATIVO' | 'DESATIVADO')}
+          >
+            <option value="ATIVO">ATIVO</option>
+            <option value="DESATIVADO">DESATIVADO</option>
+          </select>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="submit" className="btn-accent">
+              {editandoCodigo ? 'Salvar Alterações' : 'Cadastrar Produto'}
+            </button>
+            {editandoCodigo && (
+              <button type="button" className="btn-accent" style={{ background: '#64748b' }} onClick={cancelarEdicao}>
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       </section>
 
       <section className="card-box">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 className="card-title" style={{ margin: 0 }}>Lista de Produtos</h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={carregarProdutos} className="btn-accent" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-h)' }}>Todos</button>
-            <button onClick={carregarReposicao} className="btn-accent" style={{ background: '#ef4444' }}>Reposição</button>
-          </div>
-        </div>
-
+        <h2 className="card-title">Lista de Produtos</h2>
         <table className="custom-table">
           <thead>
             <tr>
@@ -148,6 +241,8 @@ export function PHome() {
               <th>Preço</th>
               <th>Disponível</th>
               <th>Mínima</th>
+              <th>Status</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -157,10 +252,16 @@ export function PHome() {
                 <td>{p.nome}</td>
                 <td>{p.categoria}</td>
                 <td>R$ {Number(p.preco_unitario).toFixed(2)}</td>
-                <td style={{ color: p.quantidade_disponivel <= p.quantidade_minima ? '#ef4444' : 'inherit', fontWeight: p.quantidade_disponivel <= p.quantidade_minima ? 'bold' : 'normal' }}>
+                <td style={{ color: p.quantidade_disponivel <= p.quantidade_minima ? '#ef4444' : 'inherit' }}>
                   {p.quantidade_disponivel}
                 </td>
                 <td>{p.quantidade_minima}</td>
+                <td>{p.status}</td>
+                <td>
+                  <button className="btn-accent" style={{ padding: '6px 16px', fontSize: '14px' }} onClick={() => iniciarEdicao(p)}>
+                    Editar
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

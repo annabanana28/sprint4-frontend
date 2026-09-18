@@ -10,6 +10,7 @@ export function PCategorias() {
 
   const [nomeCategoria, setNomeCategoria] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [editando, setEditando] = useState<string | null>(null);
 
   useEffect(() => {
     carregarCategorias();
@@ -33,29 +34,44 @@ export function PCategorias() {
     }, 4000);
   };
 
+  const iniciarEdicao = (cat: CategoriaDTO) => {
+    setEditando(cat.nome_categoria);
+    setNomeCategoria(cat.nome_categoria);
+    setDescricao(cat.descricao || '');
+  };
+
+  const cancelarEdicao = () => {
+    setEditando(null);
+    setNomeCategoria('');
+    setDescricao('');
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Validação Frontend
     if (!nomeCategoria.trim()) {
       exibirMensagem('O nome da categoria é obrigatório!', 'erro');
       return;
     }
 
-    const novaCategoria: CategoriaDTO = {
+    const payload: CategoriaDTO = {
       nome_categoria: nomeCategoria.trim(),
       descricao: descricao.trim() || undefined,
     };
 
-    const sucesso = await CategoriaRequests.cadastrar(novaCategoria);
+    let sucesso = false;
+    if (editando) {
+      sucesso = await CategoriaRequests.atualizar(editando, payload);
+    } else {
+      sucesso = await CategoriaRequests.cadastrar(payload);
+    }
 
     if (sucesso) {
-      exibirMensagem('Categoria cadastrada com sucesso!', 'sucesso');
-      setNomeCategoria('');
-      setDescricao('');
+      exibirMensagem(editando ? 'Categoria atualizada com sucesso!' : 'Categoria cadastrada com sucesso!', 'sucesso');
+      cancelarEdicao();
       carregarCategorias();
     } else {
-      exibirMensagem('Falha ao cadastrar categoria. Verifique se o nome já existe!', 'erro');
+      exibirMensagem('Falha ao salvar categoria.', 'erro');
     }
   };
 
@@ -76,7 +92,7 @@ export function PCategorias() {
       )}
 
       <section className="card-box">
-        <h2 className="card-title">Cadastrar Categoria</h2>
+        <h2 className="card-title">{editando ? `Editar Categoria: ${editando}` : 'Cadastrar Categoria'}</h2>
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px' }}>
           <input
             className="custom-input"
@@ -84,6 +100,7 @@ export function PCategorias() {
             placeholder="Nome da Categoria *"
             value={nomeCategoria}
             onChange={(e) => setNomeCategoria(e.target.value)}
+            disabled={!!editando}
             required
           />
           <input
@@ -93,9 +110,16 @@ export function PCategorias() {
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
           />
-          <button type="submit" className="btn-accent">
-            Cadastrar Categoria
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="submit" className="btn-accent">
+              {editando ? 'Salvar Alterações' : 'Cadastrar Categoria'}
+            </button>
+            {editando && (
+              <button type="button" className="btn-accent" style={{ background: '#64748b' }} onClick={cancelarEdicao}>
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       </section>
 
@@ -106,6 +130,7 @@ export function PCategorias() {
             <tr>
               <th>Nome da Categoria</th>
               <th>Descrição</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -113,6 +138,11 @@ export function PCategorias() {
               <tr key={cat.nome_categoria}>
                 <td>{cat.nome_categoria}</td>
                 <td>{cat.descricao || '-'}</td>
+                <td>
+                  <button className="btn-accent" style={{ padding: '6px 16px', fontSize: '14px' }} onClick={() => iniciarEdicao(cat)}>
+                    Editar
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
