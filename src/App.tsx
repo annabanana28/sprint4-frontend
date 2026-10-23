@@ -5,6 +5,7 @@ import { Rodape } from './components/Rodape/Rodape';
 import { PHome } from './pages/PHome/PHome';
 import { PCategorias } from './pages/PCategorias/PCategorias';
 import { PMovimentacoes } from './pages/PMovimentacoes/PMovimentacoes';
+import { PLogin } from './pages/PLogin/PLogin';
 import { ProdutoRequests } from './fetch/ProdutoRequests';
 import type { ProdutoDTO } from './dto/ProdutoDTO';
 
@@ -32,16 +33,12 @@ function App() {
     setPaginaAtual('inicio');
   };
 
-  // Se não estiver autenticado, exibe a tela de BoasVindas
+  // Se NÃO estiver autenticado, exibe a tela de Login oficial (PLogin)
   if (!autenticado) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', justifyContent: 'center' }}>
-        <BoasVindas produtos={produtos} aoNavegar={setPaginaAtual} />
-      </div>
-    );
+    return <PLogin onLoginSuccess={() => setAutenticado(true)} />;
   }
 
-  // Se estiver autenticado, exibe a aplicação completa
+  // Se ESTIVER autenticado, exibe a aplicação completa
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navegacao
