@@ -22,7 +22,7 @@ function App() {
     if (autenticado) {
       ProdutoRequests.listarTodos()
         .then(setProdutos)
-        .catch(() => console.error('Erro ao buscar produtos'));
+        .catch((err) => console.error('Erro ao buscar produtos:', err));
     }
   }, [paginaAtual, autenticado]);
 
@@ -32,7 +32,7 @@ function App() {
     setPaginaAtual('inicio');
   };
 
-  // Se não estiver autenticado, exibe a tela de boas-vindas/login
+  // Se não estiver autenticado, exibe a tela de BoasVindas
   if (!autenticado) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', justifyContent: 'center' }}>
