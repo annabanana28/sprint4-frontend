@@ -7,7 +7,7 @@ export class CategoriaRequests {
   // Buscar todas as categorias
   static async listarTodas(): Promise<CategoriaDTO[]> {
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch("API_URL");
       if (!response.ok) throw new Error('Erro ao buscar categorias.');
       return await response.json();
     } catch (error) {

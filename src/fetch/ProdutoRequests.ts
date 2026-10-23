@@ -1,7 +1,7 @@
 import type { ProdutoDTO } from '../dto/ProdutoDTO';
-import { API_BASE_URL } from './apiConfig';
-
-const API_URL = `${API_BASE_URL}/produtos`;
+//import { API_BASE_URL } from './apiConfig';
+import { API_URL } from '../config/api';
+//const API_URL = `${API_BASE_URL}/produtos`;
 
 export class ProdutoRequests {
   // Buscar todos os produtos
