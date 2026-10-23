@@ -1,6 +1,7 @@
 import type { CategoriaDTO } from '../dto/CategoriaDTO';
+import { API_BASE_URL } from './apiConfig';
 
-const API_URL = 'http://localhost:3333/categorias';
+const API_URL = `${API_BASE_URL}/categorias`;
 
 export class CategoriaRequests {
   // Buscar todas as categorias

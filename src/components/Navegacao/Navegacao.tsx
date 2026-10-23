@@ -1,39 +1,82 @@
+import { useState, useEffect } from 'react';
+
 interface NavegacaoProps {
   paginaAtual: 'inicio' | 'produtos' | 'categorias' | 'movimentacoes';
   setPaginaAtual: (pagina: 'inicio' | 'produtos' | 'categorias' | 'movimentacoes') => void;
+  onLogout?: () => void;
 }
 
-export function Navegacao({ paginaAtual, setPaginaAtual }: NavegacaoProps) {
-  const getItemStyle = (pagina: string) => ({
-    background: paginaAtual === pagina ? 'var(--accent)' : 'transparent',
-    border: '1px solid var(--border)',
-    color: paginaAtual === pagina ? '#fff' : 'var(--text-h)',
-  });
+export function Navegacao({ paginaAtual, setPaginaAtual, onLogout }: NavegacaoProps) {
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [nomeUsuario, setNomeUsuario] = useState('');
+
+  useEffect(() => {
+    try {
+      const usuarioArmazenado = localStorage.getItem('@StockManager:usuario');
+      if (usuarioArmazenado) {
+        const parsed = JSON.parse(usuarioArmazenado);
+        setNomeUsuario(parsed.nome || parsed.login || 'Usuário');
+      }
+    } catch {
+      setNomeUsuario('');
+    }
+  }, []);
+
+  const navegarPara = (pagina: 'inicio' | 'produtos' | 'categorias' | 'movimentacoes') => {
+    setPaginaAtual(pagina);
+    setMenuAberto(false);
+  };
 
   return (
-    <nav style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '16px 24px',
-      borderBottom: '1px solid var(--border)',
-      background: 'var(--code-bg)',
-    }}>
-      <strong style={{ fontSize: '20px', color: 'var(--text-h)' }}>📦 StockManager</strong>
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <button className="btn-accent" style={getItemStyle('inicio')} onClick={() => setPaginaAtual('inicio')}>
+    <header className="navbar">
+      <div className="nav-brand">
+        <span>📦</span>
+        <span>StockManager</span>
+      </div>
+
+      <button
+        className="nav-mobile-toggle"
+        onClick={() => setMenuAberto(!menuAberto)}
+        aria-label="Abrir menu"
+      >
+        {menuAberto ? '✕' : '☰'}
+      </button>
+
+      <nav className={`nav-menu ${menuAberto ? 'open' : ''}`}>
+        <button
+          className={`nav-btn ${paginaAtual === 'inicio' ? 'active' : ''}`}
+          onClick={() => navegarPara('inicio')}
+        >
           Início
         </button>
-        <button className="btn-accent" style={getItemStyle('produtos')} onClick={() => setPaginaAtual('produtos')}>
+        <button
+          className={`nav-btn ${paginaAtual === 'produtos' ? 'active' : ''}`}
+          onClick={() => navegarPara('produtos')}
+        >
           Produtos
         </button>
-        <button className="btn-accent" style={getItemStyle('categorias')} onClick={() => setPaginaAtual('categorias')}>
+        <button
+          className={`nav-btn ${paginaAtual === 'categorias' ? 'active' : ''}`}
+          onClick={() => navegarPara('categorias')}
+        >
           Categorias
         </button>
-        <button className="btn-accent" style={getItemStyle('movimentacoes')} onClick={() => setPaginaAtual('movimentacoes')}>
+        <button
+          className={`nav-btn ${paginaAtual === 'movimentacoes' ? 'active' : ''}`}
+          onClick={() => navegarPara('movimentacoes')}
+        >
           Movimentações
         </button>
-      </div>
-    </nav>
+
+        {onLogout && (
+          <div className="nav-user">
+            {nomeUsuario && <span className="nav-user-name">👤 {nomeUsuario}</span>}
+            <button className="nav-logout-btn" onClick={onLogout} title="Encerrar sessão">
+              Sair
+            </button>
+          </div>
+        )}
+      </nav>
+    </header>
   );
 }

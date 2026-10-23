@@ -10,6 +10,7 @@ export function PHome() {
   const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
   const [mensagem, setMensagem] = useState('');
   const [tipoMensagem, setTipoMensagem] = useState<'sucesso' | 'erro' | ''>('');
+  const [carregando, setCarregando] = useState(true);
 
   const [editandoCodigo, setEditandoCodigo] = useState<string | null>(null);
   const [codigoProduto, setCodigoProduto] = useState('');
@@ -26,15 +27,32 @@ export function PHome() {
   }, []);
 
   const carregarDados = async () => {
+    setCarregando(true);
     try {
-      const [prods, cats] = await Promise.all([
+      const [prodsRes, catsRes] = await Promise.allSettled([
         ProdutoRequests.listarTodos(),
         CategoriaRequests.listarTodas(),
       ]);
-      setProdutos(prods);
-      setCategorias(cats);
+
+      if (prodsRes.status === 'fulfilled') {
+        setProdutos(prodsRes.value);
+      } else {
+        console.error('Erro ao listar produtos:', prodsRes.reason);
+      }
+
+      if (catsRes.status === 'fulfilled') {
+        setCategorias(catsRes.value);
+      } else {
+        console.error('Erro ao listar categorias:', catsRes.reason);
+      }
+
+      if (prodsRes.status === 'rejected' && catsRes.status === 'rejected') {
+        exibirMensagem('Não foi possível conectar ao servidor backend.', 'erro');
+      }
     } catch {
-      exibirMensagem('Erro ao carregar dados dos produtos.', 'erro');
+      exibirMensagem('Erro inesperado ao carregar dados dos produtos.', 'erro');
+    } finally {
+      setCarregando(false);
     }
   };
 
@@ -47,17 +65,20 @@ export function PHome() {
     }, 4000);
   };
 
-const iniciarEdicao = (p: ProdutoDTO) => {
-  setEditandoCodigo(p.codigo_produto);
-  setCodigoProduto(p.codigo_produto);
-  setNome(p.nome);
-  setDescricao(p.descricao || '');
-  setCategoria(p.categoria);
-  setPrecoUnitario(String(p.preco_unitario));
-  setQuantidadeDisponivel(String(p.quantidade_disponivel));
-  setQuantidadeMinima(String(p.quantidade_minima));
-  setStatus((p.status as 'ATIVO' | 'DESATIVADO') || 'ATIVO');
-};
+  const iniciarEdicao = (p: ProdutoDTO) => {
+    setEditandoCodigo(p.codigo_produto);
+    setCodigoProduto(p.codigo_produto);
+    setNome(p.nome);
+    setDescricao(p.descricao || '');
+    setCategoria(p.categoria);
+    setPrecoUnitario(String(p.preco_unitario));
+    setQuantidadeDisponivel(String(p.quantidade_disponivel));
+    setQuantidadeMinima(String(p.quantidade_minima));
+    setStatus((p.status as 'ATIVO' | 'DESATIVADO') || 'ATIVO');
+
+    // Rola suavemente até o formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const cancelarEdicao = () => {
     setEditandoCodigo(null);
@@ -79,7 +100,9 @@ const iniciarEdicao = (p: ProdutoDTO) => {
       return;
     }
 
-    const preco = parseFloat(precoUnitario);
+    // Tratamento para aceitar vírgula ou ponto no preço
+    const precoTratado = precoUnitario.replace(',', '.');
+    const preco = parseFloat(precoTratado);
     const qtdDisp = parseInt(quantidadeDisponivel);
     const qtdMin = parseInt(quantidadeMinima);
 
@@ -112,11 +135,14 @@ const iniciarEdicao = (p: ProdutoDTO) => {
     }
 
     if (sucesso) {
-      exibirMensagem(editandoCodigo ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!', 'sucesso');
+      exibirMensagem(
+        editandoCodigo ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!',
+        'sucesso'
+      );
       cancelarEdicao();
       carregarDados();
     } else {
-      exibirMensagem('Falha ao salvar produto.', 'erro');
+      exibirMensagem('Falha ao salvar produto. Verifique os dados e tente novamente.', 'erro');
     }
   };
 
@@ -125,104 +151,149 @@ const iniciarEdicao = (p: ProdutoDTO) => {
       <h1 className="app-title">Gerenciamento de Produtos</h1>
 
       {mensagem && (
-        <div style={{
-          padding: '12px',
-          marginBottom: '20px',
-          borderRadius: '6px',
-          color: '#fff',
-          backgroundColor: tipoMensagem === 'sucesso' ? '#22c55e' : '#991b1b',
-        }}>
-          {mensagem}
+        <div className={`alert-box ${tipoMensagem === 'sucesso' ? 'alert-success' : 'alert-error'}`}>
+          <span>{mensagem}</span>
         </div>
       )}
 
+      {/* Formulário de Cadastro / Edição */}
       <section className="card-box">
-        <h2 className="card-title">{editandoCodigo ? `Editar Produto: ${editandoCodigo}` : 'Cadastrar Produto'}</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px' }}>
-          <input
-            className="custom-input"
-            type="text"
-            placeholder="Código do Produto *"
-            value={codigoProduto}
-            onChange={(e) => setCodigoProduto(e.target.value)}
-            disabled={!!editandoCodigo}
-            required
-          />
+        <h2 className="card-title">
+          <span>{editandoCodigo ? `✏️ Editar Produto: ${editandoCodigo}` : '➕ Cadastrar Novo Produto'}</span>
+          {editandoCodigo && (
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={cancelarEdicao}
+            >
+              Cancelar Edição
+            </button>
+          )}
+        </h2>
 
-          <input
-            className="custom-input"
-            type="text"
-            placeholder="Nome *"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            required
-          />
+        <form onSubmit={handleSubmit} className="form-grid">
+          <div className="form-group">
+            <label htmlFor="codigo">Código do Produto *</label>
+            <input
+              id="codigo"
+              className="custom-input"
+              type="text"
+              placeholder="Ex: PROD-001"
+              value={codigoProduto}
+              onChange={(e) => setCodigoProduto(e.target.value)}
+              disabled={!!editandoCodigo}
+              required
+            />
+          </div>
 
-          <input
-            className="custom-input"
-            type="text"
-            placeholder="Descrição"
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-          />
+          <div className="form-group">
+            <label htmlFor="nome">Nome do Produto *</label>
+            <input
+              id="nome"
+              className="custom-input"
+              type="text"
+              placeholder="Ex: Teclado Mecânico RGB"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+            />
+          </div>
 
-          <select
-            className="custom-input"
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
-            required
-          >
-            <option value="">Selecione a Categoria *</option>
-            {categorias.map((c) => (
-              <option key={c.nome_categoria} value={c.nome_categoria}>
-                {c.nome_categoria}
-              </option>
-            ))}
-          </select>
+          <div className="form-group">
+            <label htmlFor="categoria">Categoria *</label>
+            <select
+              id="categoria"
+              className="custom-input"
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              required
+            >
+              <option value="">Selecione a Categoria</option>
+              {categorias.map((c) => (
+                <option key={c.nome_categoria} value={c.nome_categoria}>
+                  {c.nome_categoria}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <input
-            className="custom-input"
-            type="number"
-            step="0.01"
-            placeholder="Preço (R$) *"
-            value={precoUnitario}
-            onChange={(e) => setPrecoUnitario(e.target.value)}
-            required
-          />
+          <div className="form-group">
+            <label htmlFor="preco">Preço Unitário (R$) *</label>
+            <input
+              id="preco"
+              className="custom-input"
+              type="text"
+              inputMode="decimal"
+              placeholder="Ex: 199.90"
+              value={precoUnitario}
+              onChange={(e) => setPrecoUnitario(e.target.value)}
+              required
+            />
+          </div>
 
-          <input
-            className="custom-input"
-            type="number"
-            placeholder="Qtd. Disponível *"
-            value={quantidadeDisponivel}
-            onChange={(e) => setQuantidadeDisponivel(e.target.value)}
-            required
-          />
+          <div className="form-group">
+            <label htmlFor="qtdDisp">Qtd. Disponível *</label>
+            <input
+              id="qtdDisp"
+              className="custom-input"
+              type="number"
+              min="0"
+              placeholder="Ex: 25"
+              value={quantidadeDisponivel}
+              onChange={(e) => setQuantidadeDisponivel(e.target.value)}
+              required
+            />
+          </div>
 
-          <input
-            className="custom-input"
-            type="number"
-            placeholder="Qtd. Mínima *"
-            value={quantidadeMinima}
-            onChange={(e) => setQuantidadeMinima(e.target.value)}
-            required
-          />
+          <div className="form-group">
+            <label htmlFor="qtdMin">Qtd. Mínima (Alerta) *</label>
+            <input
+              id="qtdMin"
+              className="custom-input"
+              type="number"
+              min="0"
+              placeholder="Ex: 5"
+              value={quantidadeMinima}
+              onChange={(e) => setQuantidadeMinima(e.target.value)}
+              required
+            />
+          </div>
 
-          <select
-            className="custom-input"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as 'ATIVO' | 'DESATIVADO')}
-          >
-            <option value="ATIVO">ATIVO</option>
-            <option value="DESATIVADO">DESATIVADO</option>
-          </select>
+          <div className="form-group">
+            <label htmlFor="status">Status</label>
+            <select
+              id="status"
+              className="custom-input"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as 'ATIVO' | 'DESATIVADO')}
+            >
+              <option value="ATIVO">ATIVO</option>
+              <option value="DESATIVADO">DESATIVADO</option>
+            </select>
+          </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div className="form-group form-full">
+            <label htmlFor="descricao">Descrição (Opcional)</label>
+            <input
+              id="descricao"
+              className="custom-input"
+              type="text"
+              placeholder="Descrição breve das características do produto"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+            />
+          </div>
+
+          <div className="form-full form-actions">
             <button type="submit" className="btn-accent">
-              {editandoCodigo ? 'Salvar Alterações' : 'Cadastrar Produto'}
+              {editandoCodigo ? '💾 Salvar Alterações' : '➕ Cadastrar Produto'}
             </button>
             {editandoCodigo && (
-              <button type="button" className="btn-accent" style={{ background: '#64748b' }} onClick={cancelarEdicao}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={cancelarEdicao}
+              >
                 Cancelar
               </button>
             )}
@@ -230,42 +301,98 @@ const iniciarEdicao = (p: ProdutoDTO) => {
         </form>
       </section>
 
+      {/* Tabela de Produtos */}
       <section className="card-box">
-        <h2 className="card-title">Lista de Produtos</h2>
-        <table className="custom-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Nome</th>
-              <th>Categoria</th>
-              <th>Preço</th>
-              <th>Disponível</th>
-              <th>Mínima</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {produtos.map((p) => (
-              <tr key={p.codigo_produto}>
-                <td>{p.codigo_produto}</td>
-                <td>{p.nome}</td>
-                <td>{p.categoria}</td>
-                <td>R$ {Number(p.preco_unitario).toFixed(2)}</td>
-                <td style={{ color: p.quantidade_disponivel <= p.quantidade_minima ? '#ef4444' : 'inherit' }}>
-                  {p.quantidade_disponivel}
-                </td>
-                <td>{p.quantidade_minima}</td>
-                <td>{p.status}</td>
-                <td>
-                  <button className="btn-accent" style={{ padding: '6px 16px', fontSize: '14px' }} onClick={() => iniciarEdicao(p)}>
-                    Editar
-                  </button>
-                </td>
+        <h2 className="card-title">
+          <span>📋 Lista de Produtos ({produtos.length})</span>
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={carregarDados}
+            title="Recarregar dados"
+          >
+            🔄 Atualizar
+          </button>
+        </h2>
+
+        <div className="table-responsive">
+          <table className="custom-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Preço</th>
+                <th>Disponível</th>
+                <th>Mínima</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'center' }}>Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {carregando ? (
+                <tr>
+                  <td colSpan={8} className="empty-state">
+                    Carregando produtos...
+                  </td>
+                </tr>
+              ) : produtos.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="empty-state">
+                    Nenhum produto cadastrado até o momento.
+                  </td>
+                </tr>
+              ) : (
+                produtos.map((p) => {
+                  const critico = Number(p.quantidade_disponivel) <= Number(p.quantidade_minima);
+                  const precoFormatado = Number(p.preco_unitario || 0).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  });
+
+                  return (
+                    <tr key={p.codigo_produto}>
+                      <td>
+                        <strong>{p.codigo_produto}</strong>
+                      </td>
+                      <td>{p.nome}</td>
+                      <td>{p.categoria}</td>
+                      <td>{precoFormatado}</td>
+                      <td>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            color: critico ? '#ef4444' : '#4ade80',
+                          }}
+                        >
+                          {p.quantidade_disponivel} {critico ? '⚠️' : ''}
+                        </span>
+                      </td>
+                      <td>{p.quantidade_minima}</td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            p.status === 'DESATIVADO' ? 'badge-desativado' : 'badge-ativo'
+                          }`}
+                        >
+                          {p.status || 'ATIVO'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          className="btn-accent btn-sm"
+                          onClick={() => iniciarEdicao(p)}
+                        >
+                          Editar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { MovimentacaoDTO } from '../dto/MovimentacaoDTO';
+import { API_BASE_URL } from './apiConfig';
 
-const API_URL = 'http://localhost:3333/movimentacoes';
+const API_URL = `${API_BASE_URL}/movimentacoes`;
 
 export class MovimentacaoRequests {
   // Buscar todas as movimentações
